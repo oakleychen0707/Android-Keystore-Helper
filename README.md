@@ -141,7 +141,7 @@ System.out.println("Signature: " + signature);
 
 - 金鑰存放於 Android KeyStore，即使 App 被反編譯，也無法直接取得私鑰。
 - 本範例使用 RSA + SHA256withRSA，若有更高效能需求，可改用 EC (Elliptic Curve) 演算法。
-- 在高安全性需求下，可設定 .setUserAuthenticationRequired(true)，強制使用者通過 PIN / 指紋才能使用私鑰。
+- 在高安全性需求下，可設定 ```.setUserAuthenticationRequired(true)```，強制使用者通過 PIN / 指紋才能使用私鑰。
 
 ## 模擬 Server 驗證流程
 
