@@ -142,3 +142,72 @@ System.out.println("Signature: " + signature);
 - 金鑰存放於 Android KeyStore，即使 App 被反編譯，也無法直接取得私鑰。
 - 本範例使用 RSA + SHA256withRSA，若有更高效能需求，可改用 EC (Elliptic Curve) 演算法。
 - 在高安全性需求下，可設定 .setUserAuthenticationRequired(true)，強制使用者通過 PIN / 指紋才能使用私鑰。
+
+## 模擬 Server 驗證流程
+
+在真實情境中，App 會使用私鑰對伺服器給的 nonce 或資料做簽章，
+伺服器只需要 公鑰 就能驗證這個簽章是否正確，確認請求來自合法的 App/裝置。
+
+以下是一個簡單的 Java 伺服器端驗證範例：
+- 將 App 產生的 公鑰 (Base64) 貼到 ```publicKeyB64```
+- 將 App 產生的 簽章 (Base64) 貼到 ```signatureB64```
+- 將原始資料（例如伺服器送出的 nonce）放入 ```data```
+
+程式會輸出簽章是否有效 ✅❌
+
+```java
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
+
+public class SignatureVerifier {
+
+    public static boolean verifySignature(String publicKeyBase64, String signatureBase64, String data) {
+        try {
+            // 1. Base64 轉公鑰
+            byte[] publicKeyBytes = Base64.getDecoder().decode(publicKeyBase64);
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKeyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            PublicKey publicKey = keyFactory.generatePublic(spec);
+
+            // 2. Base64 轉簽名
+            byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
+
+            // 3. 驗證簽名
+            Signature sig = Signature.getInstance("SHA256withRSA");
+            sig.initVerify(publicKey);
+            sig.update(data.getBytes("UTF-8"));
+
+            return sig.verify(signatureBytes);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static void main(String[] args) {
+        String publicKeyB64 = "你的公鑰";   // 公鑰
+        String signatureB64 = "你的簽名";   // 簽名
+        String data = "abc123"; // nonce
+
+        boolean valid = verifySignature(publicKeyB64, signatureB64, data);
+        System.out.println(valid ? "Signature is valid ✅" : "Signature is invalid ❌");
+    }
+}
+```
+
+## 結語
+
+本專案示範了如何使用 Android Keystore 產生並管理 RSA 金鑰，並透過私鑰進行簽章、公鑰進行驗證。
+這種機制能有效避免私鑰外洩，確保只有合法的 App/裝置能對伺服器的挑戰字串 (nonce) 進行簽名回應。
+
+透過這樣的設計，可以：
+
+- 強化 API 呼叫驗證，避免被竄改或偽造請求
+- 提升 使用者登入 / 裝置綁定 的安全性
+- 建立更完整的 雙向信任 (mutual trust) 機制
+
+這是一個簡單的範例，實務上還可以結合 Play Integrity API、證書釘選 (Certificate Pinning)、安全通道 (TLS/HTTPS) 等技術，打造更全面的防護
